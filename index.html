@@ -3,70 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fixer Pro | Google Ads HTML5</title>
+    <title>AI Ad Fixer | Google Ads Compliance</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .vibrant-gradient { background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); }
-        .drop-zone-active { border-color: #10B981; background-color: #ECFDF5; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="min-h-screen">
 
-    <!-- Header -->
     <header class="vibrant-gradient text-white py-12 px-4 shadow-lg">
         <div class="max-w-4xl mx-auto text-center">
-            <h1 class="text-4xl font-extrabold mb-2">HTML Ad Policy Fixer</h1>
-            <p class="text-violet-100">Automatically apply ExitAPI, Lazy Loading, and Link Compliance</p>
+            <h1 class="text-4xl font-extrabold mb-2">AI HTML Ad Fixer</h1>
+            <p class="text-violet-100">Powered by Gemini AI to resolve H5 Validator Errors</p>
         </div>
     </header>
 
-    <main class="max-w-4xl mx-auto -mt-10 px-4 pb-20">
-        <div class="bg-white rounded-2xl shadow-xl p-8">
+    <main class="max-w-3xl mx-auto -mt-10 px-4 pb-20">
+        <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
             
+            <!-- API Key Input -->
+            <div class="mb-8">
+                <label class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Gemini API Key</label>
+                <input type="password" id="apiKeyInput" 
+                       placeholder="Paste your Gemini API key here..." 
+                       class="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-400 outline-none bg-slate-50 transition-all">
+                <p class="text-xs text-slate-400 mt-2 italic">Your key is never stored. It is only used to call the Gemini API from your browser.</p>
+            </div>
+
             <!-- Upload Area -->
-            <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-xl p-12 text-center transition-all cursor-pointer hover:border-violet-400 group">
+            <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center transition-all cursor-pointer hover:border-emerald-400 group bg-slate-50">
                 <input type="file" id="fileInput" class="hidden" accept=".zip">
-                <div class="mb-4 inline-flex items-center justify-center w-16 h-16 bg-violet-100 text-violet-600 rounded-full group-hover:scale-110 transition-transform">
+                <div class="mb-4 inline-flex items-center justify-center w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full group-hover:scale-110 transition-transform">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="box-arrow-in-down" />
-                        <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                 </div>
-                <h3 class="text-xl font-semibold text-slate-700" id="fileNameDisplay">Upload ZIP Bundle</h3>
-                <p class="text-slate-500 mt-2">Drag and drop or click to browse files</p>
+                <h3 class="text-xl font-semibold text-slate-700" id="fileNameDisplay">Upload Ad ZIP</h3>
+                <p class="text-slate-500 mt-2 font-medium">Drag and drop or click to browse</p>
             </div>
 
             <!-- Action Button -->
-            <button id="processBtn" disabled class="w-full mt-6 py-4 bg-slate-200 text-slate-500 font-bold rounded-xl transition-all cursor-not-allowed">
-                SELECT A FILE FIRST
+            <button id="processBtn" disabled class="w-full mt-6 py-4 bg-slate-200 text-slate-500 font-bold rounded-xl transition-all cursor-not-allowed uppercase tracking-widest">
+                Select File & Enter API Key
             </button>
 
-            <!-- Results Section -->
-            <div id="resultSection" class="hidden mt-8 space-y-6">
-                <div class="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-lg">
-                    <div class="flex items-center space-x-3">
-                        <div class="bg-emerald-500 text-white p-1 rounded-full">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                        </div>
-                        <span class="font-semibold text-emerald-800">Processing Complete</span>
-                    </div>
-                    <div id="downloadContainer"></div>
-                </div>
+            <!-- Status Logs -->
+            <div id="logArea" class="hidden mt-8">
+                <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Live Processing Log</h4>
+                <div id="logList" class="bg-slate-900 text-emerald-400 p-4 rounded-xl font-mono text-xs h-48 overflow-y-auto space-y-1"></div>
+            </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="p-6 bg-slate-100 rounded-xl">
-                        <h4 class="font-bold text-slate-700 mb-3 uppercase text-xs tracking-wider">Fixed Logs</h4>
-                        <ul id="logList" class="text-sm text-slate-600 space-y-2 max-h-40 overflow-y-auto"></ul>
-                    </div>
-                    <div class="p-6 bg-violet-50 rounded-xl border border-violet-100">
-                        <h4 class="font-bold text-violet-700 mb-3 uppercase text-xs tracking-wider">Next Step</h4>
-                        <p class="text-sm text-violet-800 mb-4">Validate your fixed ZIP on the official tool:</p>
-                        <a href="https://h5validator.appspot.com/adwords/asset" target="_blank" class="inline-block px-4 py-2 bg-violet-600 text-white text-xs font-bold rounded hover:bg-violet-700 transition-colors">OPEN GOOGLE VALIDATOR →</a>
-                    </div>
-                </div>
+            <!-- Result Section -->
+            <div id="resultSection" class="hidden mt-6 text-center">
+                <div id="downloadContainer"></div>
+                <p class="mt-4 text-sm text-slate-500">After downloading, test it on the <a href="https://h5validator.appspot.com/adwords/asset" target="_blank" class="text-violet-600 font-bold underline">H5 Validator</a>.</p>
             </div>
         </div>
     </main>
