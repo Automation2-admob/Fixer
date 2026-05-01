@@ -50,11 +50,11 @@ async function downloadAsset(url) {
 }
 
 async function cleanHtmlWithGemini(htmlCode, apiKey) {
-    // UPDATED URL: Using v1 instead of v1beta and adding -latest to the model name
+    // UPDATED: Switching to v1 and adding -latest for stability
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
     
     const prompt = `
-        ACT AS A GOOGLE ADS VALIDATOR EXPERT. Rewrite the HTML to satisfy these 100% mandatory conditions:
+        ACT AS A GOOGLE ADS COMPLIANCE EXPERT. Rewrite the HTML to satisfy these 100% mandatory conditions:
         
         1. EXIT API: Injected <script src="https://tpc.googlesyndication.com/pagead/js/r20130206/utils/exitapi.js"></script> as the first child of <head>.
         2. MANDATORY EXIT CALL: Find CTA buttons (Install, Download, Play) and add onclick="ExitApi.exit()". 
@@ -72,10 +72,33 @@ async function cleanHtmlWithGemini(htmlCode, apiKey) {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: prompt }]
+                }]
+            })
         });
 
         const data = await response.json();
+
+        if (data.error) {
+            throw new Error(`Gemini API Error: ${data.error.message}`);
+        }
+
+        if (!data.candidates || data.candidates.length === 0) {
+            throw new Error("Gemini returned no content. Check your API quota or safety settings.");
+        }
+
+        let cleaned = data.candidates[0].content.parts[0].text;
+        
+        // Final sanitization to remove markdown backticks if AI ignores instructions
+        return cleaned.replace(/```html|```/g, '').trim();
+
+    } catch (e) {
+        console.error("AI Fixer Error:", e);
+        throw e;
+    }
+}
 
         // Error handling for API response
         if (data.error) {
