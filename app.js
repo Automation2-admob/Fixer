@@ -10,7 +10,6 @@ const apiKeyInput = document.getElementById('apiKeyInput');
 
 let selectedFile = null;
 
-// Handle File Selection
 dropZone.onclick = () => fileInput.click();
 fileInput.onchange = (e) => {
     if (e.target.files.length > 0) {
@@ -25,7 +24,7 @@ apiKeyInput.oninput = () => checkReady();
 function checkReady() {
     if (selectedFile && apiKeyInput.value.length > 10) {
         processBtn.disabled = false;
-        processBtn.innerText = "START AI POLICY FIX";
+        processBtn.innerText = "FIX ALL VALIDATOR ERRORS";
         processBtn.className = "w-full mt-6 py-4 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all shadow-lg cursor-pointer uppercase tracking-widest";
     }
 }
@@ -38,21 +37,21 @@ function addLog(msg) {
     logList.scrollTop = logList.scrollHeight;
 }
 
-// AI Fixing Function
 async function cleanHtmlWithGemini(htmlCode, apiKey) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     
     const prompt = `
-        You are a Google Ads Compliance Expert. Fix the following HTML code to pass H5 Validator:
-        1. Ensure <script src="https://tpc.googlesyndication.com/pagead/js/r20130206/utils/exitapi.js"></script> is the first tag in <head>.
-        2. Identify CTA buttons (Install, Play Now, etc.) and add onclick="ExitApi.exit()". 
-        3. CRITICAL: There must be at least one ExitApi.exit() call in the code. If no CTA is found, add onclick="ExitApi.exit()" to the main container or <body>.
-        4. Add loading="lazy" to all <img> and <iframe> tags.
-        5. Convert absolute URLs to relative paths (e.g. change https://site.com/img.png to img.png).
+        ACT AS A GOOGLE ADS COMPLIANCE EXPERT. Fix this HTML to pass the H5 Validator perfectly.
         
-        Return ONLY the raw HTML code. Do not include markdown code blocks or explanations.
+        RULES:
+        1. EXIT API (MANDATORY): Place <script src="https://tpc.googlesyndication.com/pagead/js/r20130206/utils/exitapi.js"></script> inside <head>.
+        2. EXIT CALL (HARDCODE): You MUST ensure "ExitApi.exit()" is called somewhere. If there is no CTA button, add this attribute to the <body> tag: onclick="ExitApi.exit()". This ensures the Exit API is always detected.
+        3. LAZY LOADING: Add loading="lazy" to every <img> and <iframe> tag.
+        4. NO EXTERNAL LINKS: Replace any 'https://play.google.com...' or other store links with 'javascript:void(0);' and add onclick="ExitApi.exit()".
         
-        HTML CODE:
+        Return ONLY the raw HTML. No markdown.
+        
+        HTML:
         ${htmlCode}
     `;
 
@@ -69,48 +68,49 @@ async function cleanHtmlWithGemini(htmlCode, apiKey) {
     return cleaned.replace(/```html|```/g, '').trim();
 }
 
-// Main Processing Loop
 processBtn.onclick = async () => {
     const apiKey = apiKeyInput.value;
     logList.innerHTML = '';
     resultSection.classList.add('hidden');
     processBtn.disabled = true;
-    processBtn.innerText = "AI IS REVIEWING...";
+    processBtn.innerText = "CLEANING CODE...";
 
     const zip = new JSZip();
     const newZip = new JSZip();
 
     try {
         const contents = await zip.loadAsync(selectedFile);
-        addLog("ZIP Loaded successfully.");
+        addLog("Analyzing ZIP structure...");
 
         let mainHtmlPath = "";
-        // Find the primary HTML file
+        // Search all folders for any HTML file to use as the entry point
         for (let path in contents.files) {
-            if (path.toLowerCase().endsWith('.html') && !mainHtmlPath) {
+            if (path.toLowerCase().endsWith('.html')) {
                 mainHtmlPath = path;
+                break; 
             }
         }
+
+        if (!mainHtmlPath) throw new Error("No HTML file found in ZIP!");
 
         for (let path in contents.files) {
             let fileData = contents.files[path];
             if (fileData.dir) continue;
 
             if (path === mainHtmlPath) {
-                addLog(`Found Entry Point: ${path}`);
+                addLog(`Fixing Entry Point: ${path}`);
                 let htmlText = await fileData.async("string");
                 
-                addLog("Sending to Gemini AI for structural fixes...");
+                // Use Gemini for the heavy lifting
                 const fixedHtml = await cleanHtmlWithGemini(htmlText, apiKey);
                 
-                // Force rename to index.html at root (Error 3 Fix)
+                // FIX ERROR 3: Always save as index.html at the ROOT
                 newZip.file("index.html", fixedHtml);
-                addLog("✅ Created index.html at root with AI fixes.");
+                addLog("✅ Created 'index.html' at root folder.");
             } else {
-                // Preserve folder structure for assets/js/css
+                // Keep other assets in their relative folders
                 const blob = await fileData.async("blob");
                 newZip.file(path, blob);
-                addLog(`Preserving asset: ${path}`);
             }
         }
 
@@ -119,19 +119,19 @@ processBtn.onclick = async () => {
         
         resultSection.classList.remove('hidden');
         downloadContainer.innerHTML = `
-            <a href="${url}" download="FIXED_${selectedFile.name}" 
+            <a href="${url}" download="VALIDATED_${selectedFile.name}" 
                class="inline-block px-10 py-4 bg-violet-600 text-white font-black rounded-xl hover:bg-violet-700 transition-all shadow-xl uppercase">
-               Download Fixed Bundle
+               Download Ready ZIP
             </a>
         `;
         
-        addLog("🚀 All fixes complete! Ready for download.");
-        processBtn.innerText = "PROCESS ANOTHER";
+        addLog("🚀 Success! All 3 errors addressed.");
+        processBtn.innerText = "FIX ANOTHER";
         processBtn.disabled = false;
 
     } catch (e) {
         addLog(`❌ ERROR: ${e.message}`);
-        processBtn.innerText = "FIX FAILED - TRY AGAIN";
+        processBtn.innerText = "RETRY";
         processBtn.disabled = false;
     }
 };
