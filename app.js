@@ -49,9 +49,9 @@ async function downloadAsset(url) {
     }
 }
 
-// AI Compliance Engine
 async function cleanHtmlWithGemini(htmlCode, apiKey) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // UPDATED URL: Using v1 instead of v1beta and adding -latest to the model name
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
     
     const prompt = `
         ACT AS A GOOGLE ADS VALIDATOR EXPERT. Rewrite the HTML to satisfy these 100% mandatory conditions:
@@ -68,16 +68,32 @@ async function cleanHtmlWithGemini(htmlCode, apiKey) {
         ${htmlCode}
     `;
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message);
-    let cleaned = data.candidates[0].content.parts[0].text;
-    return cleaned.replace(/```html|```/g, '').trim();
+        const data = await response.json();
+
+        // Error handling for API response
+        if (data.error) {
+            throw new Error(`API Error: ${data.error.message}`);
+        }
+
+        if (!data.candidates || data.candidates.length === 0) {
+            throw new Error("No response from Gemini AI. Check your prompt or content.");
+        }
+
+        let cleaned = data.candidates[0].content.parts[0].text;
+        // Strip markdown backticks if the AI includes them anyway
+        return cleaned.replace(/```html|```/g, '').trim();
+
+    } catch (e) {
+        console.error("AI Fixer failed:", e);
+        throw e;
+    }
 }
 
 // Execution Logic
