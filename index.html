@@ -3,69 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Ad Fixer Pro | Funsol Automation</title>
+    <title>AI Ad Fixer | Funsol Automation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
         .vibrant-gradient { background: linear-gradient(135deg, #7C3AED 0%, #10B981 100%); }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
 <body class="min-h-screen">
 
-    <header class="vibrant-gradient text-white py-12 px-4 shadow-lg mb-8">
-        <div class="max-w-4xl mx-auto text-center">
-            <h1 class="text-4xl font-extrabold mb-2 uppercase tracking-tighter">AI Ad Policy Fixer</h1>
-            <p class="text-white/80 font-medium">Automatic Asset Localization • ExitAPI Injection • H5 Validator Compliance</p>
-        </div>
+    <header class="vibrant-gradient text-white py-12 px-4 shadow-lg mb-8 text-center">
+        <h1 class="text-4xl font-extrabold mb-2 uppercase tracking-tighter">AI Ad Policy Fixer</h1>
+        <p class="text-white/80 font-medium">Localization • ExitAPI • H5 Validator Compliance</p>
     </header>
 
     <main class="max-w-3xl mx-auto px-4 pb-20">
         <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
             
-            <!-- Gemini Configuration -->
-            <div class="mb-8">
+            <!-- API Configuration -->
+            <div class="mb-6">
                 <label class="block text-xs font-black text-slate-500 mb-2 uppercase tracking-widest">Gemini API Key</label>
-                <input type="password" id="apiKeyInput" 
-                       placeholder="Enter API Key to enable AI Fixes..." 
-                       class="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-400 outline-none bg-slate-50 transition-all font-mono">
+                <input type="password" id="apiKeyInput" placeholder="Enter API Key..." class="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-400 outline-none bg-slate-50 transition-all font-mono">
+                <div class="mt-2 text-right">
+                    <button id="listModelsBtn" class="text-[10px] font-bold text-violet-500 hover:underline uppercase tracking-widest">Check Available Models</button>
+                </div>
             </div>
 
             <!-- Upload Zone -->
             <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center transition-all cursor-pointer hover:border-emerald-400 group bg-slate-50/50">
                 <input type="file" id="fileInput" class="hidden" accept=".zip">
                 <div class="mb-4 inline-flex items-center justify-center w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full group-hover:scale-110 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                 </div>
                 <h3 class="text-xl font-bold text-slate-700" id="fileNameDisplay">Drop Ad ZIP Here</h3>
-                <p class="text-slate-400 mt-1">Files are processed locally in your browser</p>
             </div>
 
-            <!-- Action Button -->
-            <button id="processBtn" disabled class="w-full mt-8 py-5 bg-slate-200 text-slate-400 font-black rounded-2xl transition-all cursor-not-allowed uppercase tracking-widest text-sm shadow-lg">
-                Ready to Process
-            </button>
+            <button id="processBtn" disabled class="w-full mt-8 py-5 bg-slate-200 text-slate-400 font-black rounded-2xl transition-all cursor-not-allowed uppercase tracking-widest text-sm shadow-lg">Start AI Fix</button>
 
-            <!-- Real-time Terminal Logs -->
+            <!-- Logs -->
             <div id="logArea" class="hidden mt-10">
-                <div class="flex items-center justify-between mb-3 px-1">
-                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">System Logs</h4>
-                    <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                </div>
-                <div id="logList" class="bg-slate-900 text-emerald-400 p-5 rounded-2xl font-mono text-[11px] h-56 overflow-y-auto leading-relaxed shadow-inner border border-slate-800"></div>
+                <div id="logList" class="bg-slate-900 text-emerald-400 p-5 rounded-2xl font-mono text-[11px] h-56 overflow-y-auto leading-relaxed border border-slate-800"></div>
             </div>
 
-            <!-- Success/Download Section -->
             <div id="resultSection" class="hidden mt-8 pt-8 border-t border-slate-100 text-center">
                 <div id="downloadContainer"></div>
-                <p class="mt-6 text-xs text-slate-400 font-medium tracking-tight">
-                    Compliant with <span class="text-slate-600 font-bold">Google Ads HTML5 Policy v2026</span>
-                </p>
             </div>
         </div>
     </main>
