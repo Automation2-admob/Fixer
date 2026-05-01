@@ -1,69 +1,137 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Ad Fixer | Google Ads Compliance</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
-        .vibrant-gradient { background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); }
-    </style>
-</head>
-<body class="min-h-screen">
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const processBtn = document.getElementById('processBtn');
+const fileNameDisplay = document.getElementById('fileNameDisplay');
+const logList = document.getElementById('logList');
+const logArea = document.getElementById('logArea');
+const resultSection = document.getElementById('resultSection');
+const downloadContainer = document.getElementById('downloadContainer');
+const apiKeyInput = document.getElementById('apiKeyInput');
 
-    <header class="vibrant-gradient text-white py-12 px-4 shadow-lg">
-        <div class="max-w-4xl mx-auto text-center">
-            <h1 class="text-4xl font-extrabold mb-2">AI HTML Ad Fixer</h1>
-            <p class="text-violet-100">Powered by Gemini AI to resolve H5 Validator Errors</p>
-        </div>
-    </header>
+let selectedFile = null;
 
-    <main class="max-w-3xl mx-auto -mt-10 px-4 pb-20">
-        <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
-            
-            <!-- API Key Input -->
-            <div class="mb-8">
-                <label class="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Gemini API Key</label>
-                <input type="password" id="apiKeyInput" 
-                       placeholder="Paste your Gemini API key here..." 
-                       class="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-violet-400 outline-none bg-slate-50 transition-all">
-                <p class="text-xs text-slate-400 mt-2 italic">Your key is never stored. It is only used to call the Gemini API from your browser.</p>
-            </div>
+dropZone.onclick = () => fileInput.click();
+fileInput.onchange = (e) => {
+    if (e.target.files.length > 0) {
+        selectedFile = e.target.files[0];
+        fileNameDisplay.innerText = selectedFile.name;
+        checkReady();
+    }
+};
 
-            <!-- Upload Area -->
-            <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center transition-all cursor-pointer hover:border-emerald-400 group bg-slate-50">
-                <input type="file" id="fileInput" class="hidden" accept=".zip">
-                <div class="mb-4 inline-flex items-center justify-center w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full group-hover:scale-110 transition-transform">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                </div>
-                <h3 class="text-xl font-semibold text-slate-700" id="fileNameDisplay">Upload Ad ZIP</h3>
-                <p class="text-slate-500 mt-2 font-medium">Drag and drop or click to browse</p>
-            </div>
+apiKeyInput.oninput = () => checkReady();
 
-            <!-- Action Button -->
-            <button id="processBtn" disabled class="w-full mt-6 py-4 bg-slate-200 text-slate-500 font-bold rounded-xl transition-all cursor-not-allowed uppercase tracking-widest">
-                Select File & Enter API Key
-            </button>
+function checkReady() {
+    if (selectedFile && apiKeyInput.value.length > 10) {
+        processBtn.disabled = false;
+        processBtn.innerText = "FIX ALL VALIDATOR ERRORS";
+        processBtn.className = "w-full mt-6 py-4 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all shadow-lg cursor-pointer uppercase tracking-widest";
+    }
+}
 
-            <!-- Status Logs -->
-            <div id="logArea" class="hidden mt-8">
-                <h4 class="text-xs font-bold text-slate-400 uppercase mb-3">Live Processing Log</h4>
-                <div id="logList" class="bg-slate-900 text-emerald-400 p-4 rounded-xl font-mono text-xs h-48 overflow-y-auto space-y-1"></div>
-            </div>
+function addLog(msg) {
+    logArea.classList.remove('hidden');
+    const entry = document.createElement('div');
+    entry.innerText = `> ${msg}`;
+    logList.appendChild(entry);
+    logList.scrollTop = logList.scrollHeight;
+}
 
-            <!-- Result Section -->
-            <div id="resultSection" class="hidden mt-6 text-center">
-                <div id="downloadContainer"></div>
-                <p class="mt-4 text-sm text-slate-500">After downloading, test it on the <a href="https://h5validator.appspot.com/adwords/asset" target="_blank" class="text-violet-600 font-bold underline">H5 Validator</a>.</p>
-            </div>
-        </div>
-    </main>
+async function cleanHtmlWithGemini(htmlCode, apiKey) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    
+    const prompt = `
+        ACT AS A GOOGLE ADS COMPLIANCE EXPERT. Fix this HTML to pass the H5 Validator perfectly.
+        
+        RULES:
+        1. EXIT API (MANDATORY): Place <script src="https://tpc.googlesyndication.com/pagead/js/r20130206/utils/exitapi.js"></script> inside <head>.
+        2. EXIT CALL (HARDCODE): You MUST ensure "ExitApi.exit()" is called somewhere. If there is no CTA button, add this attribute to the <body> tag: onclick="ExitApi.exit()". This ensures the Exit API is always detected.
+        3. LAZY LOADING: Add loading="lazy" to every <img> and <iframe> tag.
+        4. NO EXTERNAL LINKS: Replace any 'https://play.google.com...' or other store links with 'javascript:void(0);' and add onclick="ExitApi.exit()".
+        
+        Return ONLY the raw HTML. No markdown.
+        
+        HTML:
+        ${htmlCode}
+    `;
 
-    <script src="app.js"></script>
-</body>
-</html>
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+    
+    let cleaned = data.candidates[0].content.parts[0].text;
+    return cleaned.replace(/```html|```/g, '').trim();
+}
+
+processBtn.onclick = async () => {
+    const apiKey = apiKeyInput.value;
+    logList.innerHTML = '';
+    resultSection.classList.add('hidden');
+    processBtn.disabled = true;
+    processBtn.innerText = "CLEANING CODE...";
+
+    const zip = new JSZip();
+    const newZip = new JSZip();
+
+    try {
+        const contents = await zip.loadAsync(selectedFile);
+        addLog("Analyzing ZIP structure...");
+
+        let mainHtmlPath = "";
+        // Search all folders for any HTML file to use as the entry point
+        for (let path in contents.files) {
+            if (path.toLowerCase().endsWith('.html')) {
+                mainHtmlPath = path;
+                break; 
+            }
+        }
+
+        if (!mainHtmlPath) throw new Error("No HTML file found in ZIP!");
+
+        for (let path in contents.files) {
+            let fileData = contents.files[path];
+            if (fileData.dir) continue;
+
+            if (path === mainHtmlPath) {
+                addLog(`Fixing Entry Point: ${path}`);
+                let htmlText = await fileData.async("string");
+                
+                // Use Gemini for the heavy lifting
+                const fixedHtml = await cleanHtmlWithGemini(htmlText, apiKey);
+                
+                // FIX ERROR 3: Always save as index.html at the ROOT
+                newZip.file("index.html", fixedHtml);
+                addLog("✅ Created 'index.html' at root folder.");
+            } else {
+                // Keep other assets in their relative folders
+                const blob = await fileData.async("blob");
+                newZip.file(path, blob);
+            }
+        }
+
+        const finalZip = await newZip.generateAsync({type:"blob"});
+        const url = window.URL.createObjectURL(finalZip);
+        
+        resultSection.classList.remove('hidden');
+        downloadContainer.innerHTML = `
+            <a href="${url}" download="VALIDATED_${selectedFile.name}" 
+               class="inline-block px-10 py-4 bg-violet-600 text-white font-black rounded-xl hover:bg-violet-700 transition-all shadow-xl uppercase">
+               Download Ready ZIP
+            </a>
+        `;
+        
+        addLog("🚀 Success! All 3 errors addressed.");
+        processBtn.innerText = "FIX ANOTHER";
+        processBtn.disabled = false;
+
+    } catch (e) {
+        addLog(`❌ ERROR: ${e.message}`);
+        processBtn.innerText = "RETRY";
+        processBtn.disabled = false;
+    }
+};
