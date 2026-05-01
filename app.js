@@ -10,7 +10,7 @@ const apiKeyInput = document.getElementById('apiKeyInput');
 
 let selectedFile = null;
 
-// --- DIAGNOSTIC: Check Models ---
+// Diagnostic Tool
 document.getElementById('listModelsBtn').onclick = async () => {
     const apiKey = apiKeyInput.value;
     if (!apiKey) return alert("Enter API Key first");
@@ -40,17 +40,27 @@ function addLog(msg) {
     logList.scrollTop = logList.scrollHeight;
 }
 
+// Asset Downloader
+async function downloadAsset(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        return await response.blob();
+    } catch (e) { return null; }
+}
+
+// AI Compliance Engine (Using Gemini 2.5 Flash)
 async function cleanHtmlWithGemini(htmlCode, apiKey) {
-    // Standard V1 URL for Flash
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // UPDATED to use Gemini 2.5 Flash as per your authorized list
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     
     const prompt = `
         ACT AS A GOOGLE ADS COMPLIANCE EXPERT. Rewrite the HTML for H5 Validator:
-        1. EXIT API: Place <script src="https://tpc.googlesyndication.com/pagead/js/r20130206/utils/exitapi.js"></script> in <head>.
+        1. EXIT API: Injected <script src="https://tpc.googlesyndication.com/pagead/js/r20130206/utils/exitapi.js"></script> in <head>.
         2. MANDATORY EXIT CALL: Add onclick="ExitApi.exit()" to <body>.
         3. LAZY LOADING: Add loading="lazy" to all <img> and <iframe>.
-        4. STRIP LINKS: Replace all 'https://' URLs with "".
-        RETURN ONLY RAW HTML.
+        4. STRIP LINKS: Replace all 'https://' URLs (except Google Fonts/jQuery) with "".
+        RETURN ONLY RAW HTML. NO MARKDOWN.
         
         HTML: ${htmlCode}
     `;
@@ -70,7 +80,7 @@ processBtn.onclick = async () => {
     const apiKey = apiKeyInput.value;
     logList.innerHTML = '';
     resultSection.classList.add('hidden');
-    processBtn.innerText = "PROCESSING...";
+    processBtn.innerText = "LOCALIZING & FIXING...";
 
     const zip = new JSZip();
     const newZip = new JSZip();
@@ -78,11 +88,30 @@ processBtn.onclick = async () => {
     try {
         const contents = await zip.loadAsync(selectedFile);
         let mainHtmlPath = "";
+        
+        // Find main HTML file
         for (let path in contents.files) {
             if (path.toLowerCase().endsWith('.html')) { mainHtmlPath = path; break; }
         }
 
-        // Keep existing assets
+        // 1. Process Assets & Localize external links
+        let htmlText = await contents.files[mainHtmlPath].async("string");
+        const mediaRegex = /https?:\/\/[^"']+\.(png|jpg|jpeg|gif|mp4|mp3|wav|ogg)/gi;
+        const foundUrls = htmlText.match(mediaRegex) || [];
+        
+        for (const url of [...new Set(foundUrls)]) {
+            const fileName = url.split('/').pop().split('?')[0];
+            addLog(`Localizing: ${fileName}`);
+            const assetBlob = await downloadAsset(url);
+            if (assetBlob) {
+                newZip.file(`assets/${fileName}`, assetBlob);
+                htmlText = htmlText.split(url).join(`assets/${fileName}`);
+            } else {
+                htmlText = htmlText.split(url).join(""); 
+            }
+        }
+
+        // 2. Preserve existing zip contents (excluding original html)
         for (let path in contents.files) {
             let fileData = contents.files[path];
             if (!fileData.dir && path !== mainHtmlPath) {
@@ -90,20 +119,17 @@ processBtn.onclick = async () => {
             }
         }
 
-        // Fix HTML & Ensure index.html at root
-        let htmlText = await contents.files[mainHtmlPath].async("string");
-        addLog("AI Reviewing Policy...");
+        // 3. AI Fix & Force index.html to root
+        addLog("AI Reviewing Policy with Gemini 2.5 Flash...");
         const fixedHtml = await cleanHtmlWithGemini(htmlText, apiKey);
-        
         newZip.file("index.html", fixedHtml);
-        addLog("✅ Generated root index.html");
 
         const finalZip = await newZip.generateAsync({type:"blob"});
         const downloadUrl = window.URL.createObjectURL(finalZip);
         
         resultSection.classList.remove('hidden');
-        downloadContainer.innerHTML = `<a href="${downloadUrl}" download="FIXED_${selectedFile.name}" class="inline-block px-12 py-5 bg-emerald-500 text-white font-black rounded-2xl hover:bg-emerald-600 shadow-xl uppercase text-sm">Download ZIP</a>`;
-        addLog("🚀 COMPLETED.");
+        downloadContainer.innerHTML = `<a href="${downloadUrl}" download="VALIDATED_${selectedFile.name}" class="inline-block px-12 py-5 bg-emerald-500 text-white font-black rounded-2xl hover:bg-emerald-600 shadow-xl uppercase text-sm">Download ZIP</a>`;
+        addLog("🚀 COMPLETED. Ready for Validator.");
     } catch (e) {
         addLog(`❌ FAILED: ${e.message}`);
     } finally {
