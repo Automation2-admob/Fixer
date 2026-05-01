@@ -50,46 +50,58 @@ async function downloadAsset(url) {
 }
 
 async function cleanHtmlWithGemini(htmlCode, apiKey) {
-    // UPDATED: Switching to v1 and adding -latest for stability
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-    
+    // List of models to try in order of reliability
+    const models = [
+        "gemini-1.5-flash-latest", 
+        "gemini-1.5-flash", 
+        "gemini-pro"
+    ];
+
     const prompt = `
         ACT AS A GOOGLE ADS COMPLIANCE EXPERT. Rewrite the HTML to satisfy these 100% mandatory conditions:
-        
         1. EXIT API: Injected <script src="https://tpc.googlesyndication.com/pagead/js/r20130206/utils/exitapi.js"></script> as the first child of <head>.
-        2. MANDATORY EXIT CALL: Find CTA buttons (Install, Download, Play) and add onclick="ExitApi.exit()". 
-        3. HARDCODE FALLBACK: Add onclick="ExitApi.exit()" to the <body> tag. This is required for H5 Validator to detect the call.
-        4. LAZY LOADING: Every <img> and <iframe> MUST have loading="lazy".
-        5. STRIP EXTERNAL LINKS: Replace all 'https://' URLs (except Google Fonts/jQuery) with "".
-        
+        2. MANDATORY EXIT CALL: Add onclick="ExitApi.exit()" to the <body> tag.
+        3. LAZY LOADING: Every <img> and <iframe> MUST have loading="lazy".
+        4. STRIP EXTERNAL LINKS: Replace all 'https://' URLs (except Google Fonts/jQuery) with "".
         RETURN ONLY RAW HTML. NO MARKDOWN.
         
-        HTML TO FIX:
-        ${htmlCode}
+        HTML: ${htmlCode}
     `;
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }]
-            })
-        });
+    for (let modelName of models) {
+        try {
+            // We use v1 which is the current stable production endpoint
+            const url = `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${apiKey}`;
+            
+            addLog(`Trying AI Model: ${modelName}...`);
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
 
-        const data = await response.json();
+            const data = await response.json();
 
-        if (data.error) {
-            throw new Error(`Gemini API Error: ${data.error.message}`);
+            if (data.error) {
+                console.warn(`Model ${modelName} failed:`, data.error.message);
+                continue; // Try next model in the list
+            }
+
+            if (data.candidates && data.candidates.length > 0) {
+                let cleaned = data.candidates[0].content.parts[0].text;
+                addLog(`✅ AI Fix successful using ${modelName}`);
+                return cleaned.replace(/```html|```/g, '').trim();
+            }
+        } catch (e) {
+            console.error(`Attempt with ${modelName} failed.`, e);
         }
+    }
 
-        if (!data.candidates || data.candidates.length === 0) {
-            throw new Error("Gemini returned no content. Check your API quota or safety settings.");
-        }
-
-        let cleaned = data.candidates[0].content.parts[0].text;
+    throw new Error("All AI models failed. Please check if your API Key is active in Google AI Studio.");
+}
         
         // Final sanitization to remove markdown backticks if AI ignores instructions
         return cleaned.replace(/```html|```/g, '').trim();
