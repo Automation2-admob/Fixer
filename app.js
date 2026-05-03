@@ -9,6 +9,7 @@ const downloadContainer = document.getElementById('downloadContainer');
 const apiKeyInput = document.getElementById('apiKeyInput');
 
 let selectedFile = null;
+let zipCounter = 1; // Logic for Requirement #2 (Sequential Naming)
 
 // Diagnostic Tool
 document.getElementById('listModelsBtn').onclick = async () => {
@@ -25,7 +26,7 @@ document.getElementById('listModelsBtn').onclick = async () => {
     } catch (e) { addLog(`❌ Connection Error: ${e.message}`); }
 };
 
-// Handle File selection and drag/drop
+// Handle File selection
 dropZone.onclick = () => fileInput.click();
 
 fileInput.onchange = (e) => {
@@ -54,18 +55,23 @@ async function downloadAsset(url) {
 }
 
 async function cleanHtmlWithGemini(htmlCode, apiKey) {
-    // UPDATED to gemini-2.0-flash (most stable in your authorized list)
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     
+    // Logic for Requirement #1: Programmatic pre-injection of lazy loading
+    // This ensures even if the AI misses one, our Regex catches all of them.
+    let processedCode = htmlCode
+        .replace(/<img(?![^>]*\bloading=)/g, '<img loading="lazy"')
+        .replace(/<iframe(?![^>]*\bloading=)/g, '<iframe loading="lazy"');
+
     const prompt = `
         ACT AS A GOOGLE ADS COMPLIANCE EXPERT. Rewrite the HTML for H5 Validator:
         1. EXIT API: Injected <script src="https://tpc.googlesyndication.com/pagead/js/r20130206/utils/exitapi.js"></script> in <head>.
         2. MANDATORY EXIT CALL: Add onclick="ExitApi.exit()" to <body>.
-        3. LAZY LOADING: Add loading="lazy" to all <img> and <iframe>.
+        3. LAZY LOADING: Ensure every <img> and <iframe> has loading="lazy".
         4. STRIP LINKS: Replace all 'https://' URLs (except Google Fonts/jQuery) with "".
         RETURN ONLY RAW HTML. NO MARKDOWN.
         
-        HTML: ${htmlCode}
+        HTML: ${processedCode}
     `;
 
     const response = await fetch(url, {
@@ -124,7 +130,8 @@ processBtn.onclick = async () => {
 
         for (let path in contents.files) {
             let fileData = contents.files[path];
-            if (!fileData.dir && path !== mainHtmlPath) {
+            // Logic for Requirement #3: Filter out old html files to prevent name duplicates
+            if (!fileData.dir && !path.toLowerCase().endsWith('.html')) {
                 newZip.file(path, await fileData.async("blob"));
             }
         }
@@ -132,15 +139,21 @@ processBtn.onclick = async () => {
         addLog("AI Reviewing Policy with Gemini 2.0 Flash...");
         const fixedHtml = await cleanHtmlWithGemini(htmlText, apiKey);
         
-        // Final bundle: Always index.html at root
+        // Logic for Requirement #3: Force the fixed content into index.html at root
         newZip.file("index.html", fixedHtml);
 
         const finalZip = await newZip.generateAsync({type:"blob"});
         const downloadUrl = window.URL.createObjectURL(finalZip);
         
+        // Logic for Requirement #2: Sequential Naming
+        const zipName = `validator_${zipCounter}.zip`;
+        
         resultSection.classList.remove('hidden');
-        downloadContainer.innerHTML = `<a href="${downloadUrl}" download="VALIDATED_${selectedFile.name}" class="inline-block px-12 py-5 bg-emerald-500 text-white font-black rounded-2xl hover:bg-emerald-600 shadow-xl uppercase text-sm transition-all">Download ZIP</a>`;
-        addLog("🚀 COMPLETED. Ready for Validator.");
+        downloadContainer.innerHTML = `<a href="${downloadUrl}" download="${zipName}" class="inline-block px-12 py-5 bg-emerald-500 text-white font-black rounded-2xl hover:bg-emerald-600 shadow-xl uppercase text-sm transition-all text-center">Download ${zipName}</a>`;
+        
+        addLog(`🚀 COMPLETED. Saved as ${zipName}`);
+        zipCounter++; // Increment for next time
+        
     } catch (e) {
         addLog(`❌ FAILED: ${e.message}`);
     } finally {
